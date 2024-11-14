@@ -11,11 +11,9 @@ output:
 
 List your group members, including their student numbers, here:
 
--   John K. Samson (\#########)
--   John Darnielle (\#########)
--   Craig Finn (\#########)
--   Joel Plaskett (\########)
--   Ezra Furman (\#########)
+-   Anh Phuong Dieu Nguyen (169105483)
+-   Minh Tri Tran (\######)
+-   Thi Thao Quyen Tran (\#####)
 
 You **must** be in a group in MyLS in order to see the DropBox used for submission. Even if you're alone, you must join a group by yourself.
 
@@ -24,7 +22,7 @@ You **must** be in a group with people from the same section as you. MyLS does n
 ```{r setup, include=FALSE}
 # echo = FALSE will set the Rmd to *not* show the R code. Don't change this.
 # You may change the default figure width and figure height as you please.
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 6)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,warning=FALSE, fig.width = 6)
 
 # Put any libraries that you need to load here.
 # DO NOT PUT "install.packages()" IN AN RMD FILE!!!
@@ -33,31 +31,19 @@ library(arrow)
 library(openxlsx)
 library(dplyr)
 library(knitr)
+library(kableExtra)
+library(gt)
 ```
-
-# Instructions
-
-You are encouraged to remove this instruction section prior to submission.
-
-It is recommended that you follow the structure of this template. The text is all placeholder - you are free to change any/all wording as you please, but it is very helpful for the grading process if you keep the same structure. Anything in \<<double angle brackets>\> definitely needs to be changed, but you are free to change any/all sentences!
-
-Note that all of the code is *hidden* by default. This file will be graded based on the insights, not the code.
-
-You will only submit the PDF version of this document. To knit to PDF, you'll need to run `install.packages("tinytex")` in the console, followed by `tinytex::install_tinytex()` (DO NOT PUT THESE COMMANDS IN AN RMD FILE!!!). If you encounter errors in "Knit to PDF", you can "knit to html" and then print the html file to PDF using your operating system's PDF view (e.g. Adobe Acrobat). Only standalone PDF files will be accepted by MyLS.
 
 # Abstract
 
-General context, very brief data descriptions, techniques used, and general conclusions, all contained within a single, concise paragraph.
+This report explores the relationship between cyclone intensity and sea ice extent, focusing on their potential correlation within the context of climate change. By analyzing a dataset of cyclone strength metrics and yearly sea ice extent, we apply exploratory data analysis techniques such as scatter plots, hexbin plots, and density plots to investigate trends and patterns. Our findings reveal no significant correlation between cyclone intensity and sea ice extent, with cyclones of varying strengths occurring across the full range of sea ice extents. Although both variables show trends over time, they do not exhibit a clear relationship, suggesting that other environmental factors may play a more substantial role in shaping cyclone behavior.
 
 # Introduction
 
-Climate change is something that has been studied. Here's some relevant information about the context of our study.
+Climate change is something that has been studied. In recent years, significant attention has been paid to the relationship between climate change and extreme weather events, such as cyclones melting sea ice levels. Understanding how these factors interact can provide valuable insights into the broader impacts of climate change on our planet.
 
-If needed, this paragraph is more information about the context.
-
-In this report, we are going to explore some aspects climate change and the impact and/or perceptions of it by using exploratory techniques. We'll explore \<<general description of data>\> using \<<general description of techniques>\>.
-
-By the end of this report, we will have shown ...
+In this report, we will examine the relationship between cyclone intensity (measured by maximum wind speed) and sea ice extent over time. The data used for this analysis includes yearly cyclone strength metrics and sea ice extent observations. We will employ various exploratory data analysis techniques, including scatter plots, hexbin plots, and density plots, to visualize the distribution, trends, and possible correlations between the two variables. By the end of this report, we aim to demonstrate that while both cyclone intensity and sea ice extent exhibit time-related trends, no clear correlation exists between the two, suggesting that other climatic factors may be influencing cyclone strength more significantly than sea ice extent alone.
 
 # Data Description
 
@@ -219,12 +205,18 @@ cyclones_data <- cyclones_data_update_2 |>
             levels = cat_levels
         )
     )
-
+kable(
+  head(cyclones_data,n=10) |> 
+  select(Basin, NameYear, Number, Name, date, lat, lon, max_wind, category),
+  col.names=c("Basin","NameYear", "Number","Name","date","lat","lon","max_wind","category")) |> 
+  add_header_above(c("Identity"=4,"Date/Time & Coordinates" = 3,"Classification"=2)
+      ) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 The data come from Hurricane Databases (HURDAT/HURDAT2) of the US’s National Oceanic and Atmospheric Administration, specifically two files for Atlantic hurricanes (1851-2022) and Northeast Pacific hurricanes (1949-2022). The clean data details each cyclone with their identity along with with its date/time and geographical latitude and longitude. It records key metrics like wind speed and central pressure and includes descriptive fields for category (e.g., tropical storm, hurricane) and type of meteorological system.
 
-The hurricane data for both the Atlantic and North Pacific basins was cleaned by loading files with placeholder column names. The raw data was parsed, splitting values based on delimiters, and converting sentinel values to missing values. Columns for cyclones’ identity (basin, year, name, number, and entries) were created, filled, and filtered to retain rows with a valid status. Data for detailed day and time of observations were parsed, renamed, and converted to appropriate data types. Both data sets were combined, and latitude and longitude values were standardized to numeric format using a custom function to manage directional indicators. The final data set includes a date column and assigns a storm category based on wind speed (levels of hurricane, tropical storm or tropical depression), making it suitable for further analysis across both basins.
+The hurricane data for both the Atlantic and North Pacific basins was cleaned by loading files with placeholder column names. The raw data was parsed, splitting values based on delimiters, and converting sentinel values to missing values. Columns for cyclones’ identity (basin, year, name, number) were created, filled, and filtered to retain rows with a valid status. Data for detailed day and time of observations were parsed, renamed, and converted to appropriate data types. Both data sets were combined, and latitude and longitude values were standardized to numeric format using a custom function to manage directional indicators. The final data set includes a date column and assigns a storm category based on wind speed (levels of hurricane, tropical storm or tropical depression), making it suitable for further analysis across both basins.
 
 ## **Yearly Ice Extent for the Arctic and Antarctic poles**
 
@@ -312,6 +304,10 @@ ice_extent_yearly <- ice_extent_daily |>
      names_to = "name",
      values_to = "value"
   )
+kable(
+  head(ice_extent_yearly,n=10),
+  col.names=c("year","region", "name","value")) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 The data come from the Sea Ice Index Daily Extent (Sea Ice Index) of the US’s National Snow and Ice Data Center and record daily sea ice extent from 1979 to present, in millions of square kilometers. The sea ice extent is defined as the total area of the ocean that is covered in ice of at least 15% concentration. The data is cleaned and transformed so that it describes the max and min yearly ice extent for each region, instead of daily, to make it easier to understand and make insights from the data.
@@ -358,6 +354,12 @@ climate_awareness <- climate_opinion_address |>
         names_from = answer,
         values_from = score
     )
+kable(
+  head(climate_awareness,n=7),
+  col.names=c("country","aware_no","aware_alittle","aware_moderate","aware_alot","aware_refuse","aware_base")) |> 
+  add_header_above(c(" "=1,"Awareness level from low to high"= 4,"Refuse to answer"=1,"Sample"=1)
+      ) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 The data come from the 2022 Climate Change Opinion Survey of Meta and the Yale Program on Climate Change Communication and describes the number of people responding about how much they known about climate change across various countries (107 individual countries, territories and 3 geographic groups). It includes information on awareness levels about climate change, from low to high (no, a little, moderate, a lot) for each country, as well as the number of people who chose not to respond and the base population surveyed in each country.
@@ -366,44 +368,139 @@ In order to clean the data, we load the data sets and name the sheet containing 
 
 ## Combining the Data
 
-Explain how any combinations of data were performed. Explain what kind of join was needed, whether columns had to be modified (for example, matching "country" names.)
+To combine the yearly ice extent and hurricane strength data sets, we first standardized cyclones data tp match varaibles with ice extent data, by creating year column (based on observation year) and region column (based on whether the latitude is positive (Arctic) or negative (Antarctic)). For yearly ice extent data set, we pivoted it to a wider format to calculate an average ice extent for each year. Finally, we performed an inner join on year and region data. The resulting data set retains selected columns relevant to the analysis, such as year, region, maximum wind, hurricane category, and average yearly ice extent.
+
+```{r combinedata}
+cyclones_data <- cyclones_data |>
+    mutate(year = ObservYear,
+           region = if_else(lat >= 0, "Arctic", "Antarctic"))
+
+ice_extent_yearly_avg <- ice_extent_yearly |>
+  pivot_wider(
+    names_from=name, 
+    values_from=value 
+  ) |> 
+  group_by(year,region) |> 
+  summarise(avg_ice_extent=min+max/2,
+            .groups='drop') 
+
+cyclones_ice_yearly <- cyclones_data |>
+    inner_join(ice_extent_yearly_avg, by = c("year", "region")) |>  
+    select(year, region,max_wind,category,avg_ice_extent)
+kable(head(cyclones_ice_yearly,n=7)) |> kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+
+```
 
 # Exploratory Data Analysis
 
-To achieve our goals, we explored the data by...
+To achieve our goals, we explored the data by using summary statistics to measure the dispersion/ variability and visualization to assess the relationship between hurricanes strength and yearly ice extent.
 
-We explored many aspects of the data, but will demonstrate three. These are \<\<insight 1\>\>, \<\<insight 2\>\>, and \<<insight3>\>
+We explored many aspects of the data, but will demonstrate three. These are **the lack of strong correlation between cyclone intensity and sea ice extent**, **the temporal trends in cyclone intensity and sea ice extent across decades**, and **the distribution of cyclones across varying sea ice extents with no clear correlation**.
 
-The first aspect that we found interesting is shown in \@ref(fig:insight1). The insight should be specific to the data shown, not a general statement beyond the data (leave that for the conclusion).
+t aspect that we found inter\@ref(fig:insight1). The scatter plot shows that cyclone intensity (max wind speed) remains fairly consistent across varying levels of sea ice extent. There is no observable trend, either positive or negative, between cyclone wind speed and ice extent (the regression line is almost horizontal). This indicates that sea ice extent does not strongly influence the strength of cyclones in this data set.
 
-```{r insight1, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+```{r insight1, fig.cap="No strong correlation between cyclones strength and ice extent"}
 # This is an example of how you can control figures and captions in
 # an R chunk. Note that you can reference figures using:
 # \@ref(fig:insight1), where "insight1" is the label of this code
 # chunk (the first bit of text after the "r" in "```{r label, options...}")
+ggplot(cyclones_ice_yearly) +
+    aes(x = avg_ice_extent, y = max_wind) +
+    geom_point(alpha=0.1) +
+    geom_smooth(method="lm") +
+    labs(
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)",
+        title = "Cyclone Intensity vs. Sea Ice Extent",
+        subtitle = "Comparing Intensity and Sea Ice Levels"
+    ) +
+    theme_minimal()
+
 ```
 
-This insight is supported by the summary statistics in table \@ref(tab:summary_stats)
+This insight is supported by the summary statistics in table \@ref(tab:summarystats)through the difference in variability between cyclone strength and yearly ice extent. As can be seen, cyclone strength, indicated by wind speed, show high variability with a range of 175 knots and standard deviation of 25.89. On the other hand, sea ice extent data has a level of stability with narrowed range (6.53) and low standard deviation (1.48). The contrasting patterns suggest that sea ice extent and cyclones strength may not have any direct impact on each other.
 
-```{r summary_stats}
+```{r summarystats}
 # Calculate the relevant summary statistics here.
 # Note that the "kable" function in the "knitr" package
 # is convenient for making nice tables. Other packages can
 # do much fancier things with tables, but keep in mind that
 # the insights should be the star, not the formatting.
+summary_stats_yearly <- cyclones_ice_yearly |>
+    summarise(
+        total_observations = n(),
+        min_max_wind = min(max_wind, na.rm = TRUE),
+        max_max_wind = max(max_wind, na.rm = TRUE),
+        range_max_wind=max_max_wind - min_max_wind,
+        mean_max_wind=mean(max_wind,na.rm=TRUE),
+        median_max_wind=median(max_wind,na.rm=TRUE),
+        sd_max_wind = sd(max_wind, na.rm = TRUE),
+        min_avg_ice_extent = min(avg_ice_extent, na.rm = TRUE),
+        max_avg_ice_extent = max(avg_ice_extent, na.rm = TRUE),
+        range_ice_extent = max_avg_ice_extent - min_avg_ice_extent,
+        mean_ice_extent=mean(avg_ice_extent,na.rm=TRUE),
+        median_ice_extent=median(avg_ice_extent,na.rm=TRUE),
+        sd_avg_ice_extent = sd(avg_ice_extent, na.rm = TRUE)
+    )
+kable(summary_stats_yearly,
+      caption ="Summary Statistics for Cyclone and Yearly Sea Ice Extent Data",
+      col.names = c(
+    "Total observations", "Min", "Max","Range","Mean","Median", "SD", "Min", "Max","Range","Mean","Median", "SD")) |> 
+  add_header_above(c(" " = 1, "Cyclone Strength Metrics" = 6, "Ice Extent Metrics" = 6)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+  
 ```
 
-The next insight that we found is shown in \@ref(fig:insight2).
+The next insight that we found is shown in \@ref(fig:insight2). There are changes in cyclone intensity and sea ice extent. In particular, cyclone intensity (max wind speed) seems to increase over time, especially from the 2000s onwards with a broader range of wind speeds. Meanwhile, sea ice extent appears to have decreased over the decades, particularly in recent years (2020s). However, the smooth lines of plots for each decade are not consistent with other in direction (some are negative and some are positive) and also are not strong enough (with small slopes of the lines).
 
-```{r insight2, fig.height=4, fig.width=6, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+```{r insight2, fig.height=4, fig.width=6, fig.cap="WHile both variables exhibit trends over time, the patterns still do not show a clear relationship"}
 # This figure will have a height of 4 and a width of 6.
 # Feel free to change this, and to apply different sizes
 # to the other figures you create.
+cyclones_ice_decade <- cyclones_ice_yearly |> 
+  filter(!is.na(category)) |> 
+        mutate(decade = floor(year / 10) * 10)
+    
+ggplot(cyclones_ice_decade) +
+    aes(x = avg_ice_extent, y = max_wind,colour=category,na.rm=TRUE) +
+    geom_point(alpha=0.2) +
+    geom_smooth(method="lm",colour="black") +
+    facet_wrap(~decade)+
+    labs(
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)",
+        color = "Cyclone Category",
+        title = "Cyclone Intensity vs. Sea Ice Extent by Cyclone Category",
+        subtitle = "Comparing Intensity and Sea Ice Levels Across Decade"
+    ) +
+    theme_minimal()
+
 ```
 
-Finally, \@ref(fig:insight3) shows ...
+Finally, \@ref(fig:insight3) shows that cyclones of varying intensities (from TD to Category 5) are observed across the full range of sea ice extents (from 12 to 16 million km²). For most cyclone categories, the peak intensity remains around 12–15 million km² of ice extent, but there is no clear trend indicating that higher or lower ice extents are linked to stronger or weaker cyclones.
 
-```{r insight3, fig.height=4, fig.width=6, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+Finally, \@ref(fig:insight3) with the hex bins shows that there is no directional trend, suggesting that cyclone intensity is not directly related to sea ice extent. Cyclones of varying intensities occur across the spectrum of ice extents. The concentration around 12–15 million km² of ice extent with moderate wind speeds suggests that cyclones are most frequently observed under these conditions.
+
+```{r insight3, fig.height=4, fig.width=6, fig.cap="There is indication of common conditions for observations, but still no strong correlation"}
+ggplot(cyclones_ice_yearly) +
+    aes(x = avg_ice_extent, y = max_wind) +
+    geom_hex(bin=20) +
+    labs(
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)",
+        title = "Cyclone Intensity vs. Sea Ice Extent",
+        subtitle = "Comparing Intensity and Sea Ice Levels"
+    ) +
+    theme_minimal()
+
+ggplot(cyclones_ice_decade, aes(x = avg_ice_extent, fill = category)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~category) +
+  labs(title = "Density Plot of Cyclone Intensity and Sea Ice Extent",
+       x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)") +
+  theme_minimal()
+
 ```
 
 # Conclusion and Future Work

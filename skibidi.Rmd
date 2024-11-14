@@ -791,23 +791,29 @@ write_parquet(happiness, "happiness.parquet")
 DATA EXPLORATORY
 
 ```{r}
+cyclones_data <- cyclones_data |>
+    mutate(year = as.integer(format(date, "%Y"))) 
 
-if (!"region" %in% colnames(cyclones_data)) {
-    cyclones_data <- cyclones_data |>
-        mutate(region = if_else(lat >= 0, "Arctic", "Antarctic"))
-}
+ice_extent_yearly <- ice_extent_daily |>
+    mutate(year = as.integer(format(date, "%Y"))) |>
+    group_by(year, region) |>
+    summarise(
+        avg_ice_extent = mean(ice_extent, na.rm = TRUE),
+        min_ice_extent = min(ice_extent, na.rm = TRUE),
+        max_ice_extent = max(ice_extent, na.rm = TRUE),
+        .groups = 'drop'
+    )
+cyclones_ice_yearly <- cyclones_data |>
+    inner_join(ice_extent_yearly, by = c("year", "region"))
 
-cyclones_ice_data <- cyclones_data %>%
-    inner_join(ice_extent_daily, by = c("date", "region"))
 
-print(cyclones_ice_data)
+print(cyclones_ice_yearly)
 
 ```
 
 ```{r}
 library(gt)
-
-summary_stats <- cyclones_ice_data |>
+summary_stats_yearly <- cyclones_ice_yearly |>
     summarise(
         total_observations = n(),
         min_max_wind = min(max_wind, na.rm = TRUE),
@@ -816,17 +822,17 @@ summary_stats <- cyclones_ice_data |>
         median_max_wind = median(max_wind, na.rm = TRUE),
         sd_max_wind = sd(max_wind, na.rm = TRUE),
         
-        min_ice_extent = min(ice_extent, na.rm = TRUE),
-        max_ice_extent = max(ice_extent, na.rm = TRUE),
-        mean_ice_extent = mean(ice_extent, na.rm = TRUE),
-        median_ice_extent = median(ice_extent, na.rm = TRUE),
-        sd_ice_extent = sd(ice_extent, na.rm = TRUE)
+        min_avg_ice_extent = min(avg_ice_extent, na.rm = TRUE),
+        max_avg_ice_extent = max(avg_ice_extent, na.rm = TRUE),
+        mean_avg_ice_extent = mean(avg_ice_extent, na.rm = TRUE),
+        median_avg_ice_extent = median(avg_ice_extent, na.rm = TRUE),
+        sd_avg_ice_extent = sd(avg_ice_extent, na.rm = TRUE)
     )
 
-summary_stats |>
+summary_stats_yearly |>
     gt() |>
     tab_header(
-        title = "Summary Statistics for Cyclone and Sea Ice Extent Data",
+        title = "Summary Statistics for Cyclone and Yearly Sea Ice Extent Data",
         subtitle = "Minimum, Maximum, Mean, Median, and Standard Deviation"
     ) |>
     fmt_number(
@@ -840,11 +846,11 @@ summary_stats |>
         mean_max_wind = "Mean Wind Speed",
         median_max_wind = "Median Wind Speed",
         sd_max_wind = "Wind Speed SD",
-        min_ice_extent = "Min Ice Extent",
-        max_ice_extent = "Max Ice Extent",
-        mean_ice_extent = "Mean Ice Extent",
-        median_ice_extent = "Median Ice Extent",
-        sd_ice_extent = "Ice Extent SD"
+        min_avg_ice_extent = "Min Avg Ice Extent",
+        max_avg_ice_extent = "Max Avg Ice Extent",
+        mean_avg_ice_extent = "Mean Avg Ice Extent",
+        median_avg_ice_extent = "Median Avg Ice Extent",
+        sd_avg_ice_extent = "Avg Ice Extent SD"
     ) |>
     tab_style(
         style = cell_text(weight = "bold"),
@@ -858,11 +864,11 @@ summary_stats |>
 ```
 PLOT1: 
 ```{r}
-cyclone_ice_summary_general <- cyclones_ice_data |>
+cyclone_ice_summary_general <- cyclones_ice_yearly |> 
     group_by(year, region) |>
     summarise(
         mean_max_wind = mean(max_wind, na.rm = TRUE),
-        mean_ice_extent = mean(ice_extent, na.rm = TRUE),
+        mean_ice_extent = mean(avg_ice_extent, na.rm = TRUE),
         .groups = 'drop'
     )
 
@@ -885,16 +891,24 @@ ggplot(cyclone_ice_summary_general) +
 PLOT2 : 
 
 ```{r}
-ggplot(cyclones_ice_data) +
-    aes(x = ice_extent, y = max_wind, color = category) +
-    geom_point(alpha = 0.7) +
+cyclone_ice_summary <- cyclones_ice_yearly |>
+    group_by(year, region, category) |>
+    summarise(
+        avg_max_wind = mean(max_wind, na.rm = TRUE),
+        avg_ice_extent = mean(avg_ice_extent, na.rm = TRUE),
+        .groups = 'drop'
+    )
+
+ggplot(cyclone_ice_summary) +
+    aes(x = avg_ice_extent, y = avg_max_wind, color = category) +
+    geom_point(alpha = 0.7, size = 2) +
     facet_wrap(~ region) +
     labs(
-        x = "Sea Ice Extent (million km²)",
-        y = "Cyclone Max Wind (knots)",
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Average Cyclone Max Wind (knots)",
         color = "Cyclone Category",
         title = "Cyclone Intensity vs. Sea Ice Extent by Region",
-        subtitle = "Impact of Cyclone Category and Sea Ice Levels"
+        subtitle = "Analysis of Cyclone Categories and Sea Ice Levels"
     ) +
     theme_minimal()
 
@@ -902,21 +916,19 @@ ggplot(cyclones_ice_data) +
 ```
 PLOT3 : 
 ```{r}
-cyclones_ice_data |> 
-  ggplot() + 
-  aes(x = category,
-      y = max_wind,
-      fill = region) +
-  geom_boxplot() + 
-  labs(
+cyclones_ice_yearly |> 
+  ggplot() +
+    aes(x = category, y = max_wind, fill = region) +
+    geom_boxplot() +
+    labs(
         x = "Cyclone Category",
         y = "Cyclone Max Wind (knots)",
         fill = "Region",
-        title = "Cyclone Intensity by Category and Region",
-        subtitle = "Comparative Distribution of Cyclone Strengths"
+        title = "Cyclone Intensity Distribution by Category and Region",
+        subtitle = "Comparison of Cyclone Strengths across Arctic and Antarctic Regions"
     ) +
     theme_minimal()
-  
+
 
 ```
 

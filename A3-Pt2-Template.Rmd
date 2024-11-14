@@ -1,0 +1,431 @@
+---
+title: "TITLE OF YOUR PROJECT"
+author: "Group 33"
+date: "November 12th, 2024"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+List your group members, including their student numbers, here:
+
+-   John K. Samson (\#########)
+-   John Darnielle (\#########)
+-   Craig Finn (\#########)
+-   Joel Plaskett (\########)
+-   Ezra Furman (\#########)
+
+You **must** be in a group in MyLS in order to see the DropBox used for submission. Even if you're alone, you must join a group by yourself.
+
+You **must** be in a group with people from the same section as you. MyLS does not allow for groups including students from both Data100A and Data100B.
+
+```{r setup, include=FALSE}
+# echo = FALSE will set the Rmd to *not* show the R code. Don't change this.
+# You may change the default figure width and figure height as you please.
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 6)
+
+# Put any libraries that you need to load here.
+# DO NOT PUT "install.packages()" IN AN RMD FILE!!!
+library(tidyverse)
+library(arrow)
+library(openxlsx)
+library(dplyr)
+library(knitr)
+```
+
+# Instructions
+
+You are encouraged to remove this instruction section prior to submission.
+
+It is recommended that you follow the structure of this template. The text is all placeholder - you are free to change any/all wording as you please, but it is very helpful for the grading process if you keep the same structure. Anything in \<<double angle brackets>\> definitely needs to be changed, but you are free to change any/all sentences!
+
+Note that all of the code is *hidden* by default. This file will be graded based on the insights, not the code.
+
+You will only submit the PDF version of this document. To knit to PDF, you'll need to run `install.packages("tinytex")` in the console, followed by `tinytex::install_tinytex()` (DO NOT PUT THESE COMMANDS IN AN RMD FILE!!!). If you encounter errors in "Knit to PDF", you can "knit to html" and then print the html file to PDF using your operating system's PDF view (e.g. Adobe Acrobat). Only standalone PDF files will be accepted by MyLS.
+
+# Abstract
+
+General context, very brief data descriptions, techniques used, and general conclusions, all contained within a single, concise paragraph.
+
+# Introduction
+
+Climate change is something that has been studied. Here's some relevant information about the context of our study.
+
+If needed, this paragraph is more information about the context.
+
+In this report, we are going to explore some aspects climate change and the impact and/or perceptions of it by using exploratory techniques. We'll explore \<<general description of data>\> using \<<general description of techniques>\>.
+
+By the end of this report, we will have shown ...
+
+# Data Description
+
+## Hurricane Strength in both the Atlantic and North Pacific basins
+
+```{r load_data1}
+cyclone_data_address <- "https://www.nhc.noaa.gov/data/hurdat/"
+at_cyclone_filename <- "hurdat2-1851-2022-050423.txt"
+np_cyclone_filename <- "hurdat2-nepac-1949-2022-050423.txt"
+
+new_columns <- c("status", "latitude", "longitude", "max_wind",
+    "min_pressure", "NE_extend_34", "SE_extend_34", "SW_extend_34",
+    "NW_extend_34", "NE_extend_50", "SE_extend_50", "SW_extend_50",
+    "NW_extend_50", "NE_extend_64", "SE_extend_64", "SW_extend_64",
+    "NW_extend_64", "r_max_wind"
+)
+at_cyclone <- str_c(cyclone_data_address, at_cyclone_filename, sep = "") |>
+    read_csv(
+        col_names = c(as.character(1:4)),
+        progress = FALSE,
+        show_col_types = FALSE
+    ) |>
+    separate_wider_delim(
+        cols = `4`,
+        # Set the delim and the names
+        delim=',',
+        names=new_columns
+    ) |>
+    mutate(
+        across(everything(), str_trim),
+        # make "-999" NAs, make "-99" NAs
+        # Create columns BasinNumberYear, Name, and Entries
+        across(everything(), ~na_if(., "-999")),
+        across(everything(), ~na_if(., "-99")),
+        BasinNumberYear = ifelse(is.na(status), `1`, NA),
+        Name = ifelse(is.na(status), `2`, NA),
+        Entries = ifelse(is.na(status), `3`, NA)
+    ) |>
+    relocate(BasinNumberYear, Name, Entries) |>
+    fill(BasinNumberYear, Name, Entries) |>
+    filter(!is.na(status))  |>
+    select(-Entries) |>
+    separate_wider_position(
+        BasinNumberYear,
+        # Specify the widths
+        widths = c(Basin = 2, Number = 2, NameYear = 4)
+    ) |>
+    separate_wider_position(
+        `1`,
+        # Specify the widths
+        widths = c(ObservYear = 4, Month = 2, Day = 2)
+    ) |>
+    separate_wider_position(
+        `2`,
+        # Specify the widths
+        widths = c(Hour = 2, Minute = 2)
+    ) |>
+    rename(
+        Identifier = `3`
+    ) |>
+    mutate(
+        across(
+            c(NameYear, ObservYear, Month, Day, Hour,
+                Minute, Number),
+            as.integer
+        )
+    ) |>
+    mutate(across(max_wind:r_max_wind, as.numeric))
+np_cyclone <- str_c(cyclone_data_address, np_cyclone_filename, sep = "") |>
+    # ALL of the steps all over again
+    read_csv(
+        col_names = c(as.character(1:4)),
+        progress = FALSE,
+        show_col_types = FALSE
+    ) |>
+    separate_wider_delim(
+        cols = `4`,
+        # Set the delim and the name
+        delim=",",
+        names=new_columns
+    ) |>
+    mutate(
+        across(everything(), str_trim),
+        # make "-999" NAs, make "-99" NAs
+        # Create columns BasinNumberYear, Name, and Entries
+        across(everything(), ~na_if(., "-999")),
+        across(everything(), ~na_if(., "-99")),
+        BasinNumberYear = ifelse(is.na(status), `1`, NA),
+        Name = ifelse(is.na(status), `2`, NA),
+        Entries = ifelse(is.na(status), `3`, NA)
+    ) |>
+    relocate(BasinNumberYear, Name, Entries) |>
+    fill(BasinNumberYear, Name, Entries) |>
+    filter(!is.na(status))  |>
+    select(-Entries) |>
+    separate_wider_position(
+        BasinNumberYear,
+        # Specify the widths
+        widths = c(Basin = 2, Number = 2, NameYear = 4)
+    ) |>
+    separate_wider_position(
+        `1`,
+        # Specify the widths
+         widths = c(ObservYear = 4, Month = 2, Day = 2)
+    ) |>
+    separate_wider_position(
+        `2`,
+        # Specify the widths
+        widths = c(Hour = 2, Minute = 2)
+    ) |>
+    rename(
+        Identifier = `3`
+    ) |>
+    mutate(
+        across(
+            c(NameYear, ObservYear, Month, Day, Hour,
+                Minute, Number),
+            as.integer
+        )
+    ) |>
+    mutate(across(max_wind:r_max_wind, as.numeric))
+cyclones_data_update_0 <- bind_rows(at_cyclone, np_cyclone)
+convert_latlon <- function(latlon) {
+   if_else(
+    str_detect(latlon, "[SW]$"),
+    -parse_number(latlon),
+    parse_number(latlon)
+  )
+}
+
+cyclones_data_update_1 <- cyclones_data_update_0 |>
+    mutate(
+        lat = convert_latlon(latitude),
+        lon = convert_latlon(longitude)
+    )
+cyclones_data_update_2 <- cyclones_data_update_1 |>
+    mutate(
+       date = make_datetime(
+          year = ObservYear,
+          month = Month,
+          day = Day, 
+          hour = Hour, 
+          min = Minute)
+    )
+cat_levels <- c("TD", "TS", "1", "2", "3", "4", "5")
+
+cyclones_data <- cyclones_data_update_2 |>
+    mutate(
+        category = ordered(
+            case_when(
+              max_wind <= 33 ~ 'TD',
+             max_wind <= 63 & max_wind >=34 ~ 'TS',
+             max_wind <= 82 & max_wind >=64  ~ '1',
+             max_wind <= 95 & max_wind >=83  ~ '2',
+             max_wind <= 112 & max_wind >=96  ~ '3',
+             max_wind <= 136 & max_wind >=113  ~ '4',
+             max_wind >= 137 ~ '5'
+            ),
+            levels = cat_levels
+        )
+    )
+
+```
+
+The data come from Hurricane Databases (HURDAT/HURDAT2) of the US’s National Oceanic and Atmospheric Administration, specifically two files for Atlantic hurricanes (1851-2022) and Northeast Pacific hurricanes (1949-2022). The clean data details each cyclone with their identity along with with its date/time and geographical latitude and longitude. It records key metrics like wind speed and central pressure and includes descriptive fields for category (e.g., tropical storm, hurricane) and type of meteorological system.
+
+The hurricane data for both the Atlantic and North Pacific basins was cleaned by loading files with placeholder column names. The raw data was parsed, splitting values based on delimiters, and converting sentinel values to missing values. Columns for cyclones’ identity (basin, year, name, number, and entries) were created, filled, and filtered to retain rows with a valid status. Data for detailed day and time of observations were parsed, renamed, and converted to appropriate data types. Both data sets were combined, and latitude and longitude values were standardized to numeric format using a custom function to manage directional indicators. The final data set includes a date column and assigns a storm category based on wind speed (levels of hurricane, tropical storm or tropical depression), making it suitable for further analysis across both basins.
+
+## **Yearly Ice Extent for the Arctic and Antarctic poles**
+
+```{r load_data2}
+# Put in your code to load in the data set, along with any
+# necessary cleaning beyond what was done in Part 1
+
+# Reminder: do NOT print your data to the screen unless it's
+# completely necessary
+sea_ice_extent_xlsx <- "https://masie_web.apps.nsidc.org/pub//DATASETS/NOAA/G02135/seaice_analysis/Sea_Ice_Index_Daily_Extent_G02135_v3.0.xlsx"
+
+NH_daily <- sea_ice_extent_xlsx |>
+    read.xlsx(
+        sheet = "NH-Daily-Extent",
+    ) |>
+    select(X1, X2, `1978`:`2023`) |>
+    rename(
+        month = X1,
+        day = X2
+    ) |>
+    fill(month) |>
+    pivot_longer(
+        cols = `1978`:`2023`,
+        names_to = "year",
+        values_to = "ice_extent",
+        values_drop_na = TRUE,
+    ) |>
+    mutate(
+        year = as.integer(year),
+        month = ordered(
+            month,
+            levels = c("January", "February", "March", "April",
+                "May", "June", "July", "August", "September",
+                "October", "November", "December")),
+        region = "Arctic",
+    ) |>
+    arrange(
+        year, month, day
+    )
+
+SH_daily <- sea_ice_extent_xlsx |>
+    read.xlsx(
+        sheet = "SH-Daily-Extent",
+        skipEmptyCols = TRUE,
+        fillMergedCells = TRUE,
+        cols = 1:48
+    ) |>
+    rename(
+        month = X1,
+        day = X2
+    ) |>
+    pivot_longer(
+        cols = `1978`:`2023`,
+        names_to = "year",
+        names_transform = list(year = as.integer),
+        values_to = "ice_extent",
+        values_drop_na = TRUE,
+    ) |>
+    mutate(
+        month = ordered(
+            month,
+            levels = c("January", "February", "March", "April",
+                "May", "June", "July", "August", "September",
+                "October", "November", "December")
+        ),
+        region = "Antarctic",
+    ) |>
+    arrange(
+        year, month, day
+    )
+
+ice_extent_daily <- bind_rows(NH_daily, SH_daily) |>
+    mutate(date = make_date(year, month, day)) |>
+    arrange(region, date)
+
+ice_extent_yearly <- ice_extent_daily |>
+    group_by(year, region) |> 
+    summarise(
+      max=max(ice_extent,na.rm=TRUE),
+      min=min(ice_extent,na.rm=TRUE),
+      .groups='drop'
+    ) |> 
+    pivot_longer(
+     cols = c(min,max),
+     names_to = "name",
+     values_to = "value"
+  )
+```
+
+The data come from the Sea Ice Index Daily Extent (Sea Ice Index) of the US’s National Snow and Ice Data Center and record daily sea ice extent from 1979 to present, in millions of square kilometers. The sea ice extent is defined as the total area of the ocean that is covered in ice of at least 15% concentration. The data is cleaned and transformed so that it describes the max and min yearly ice extent for each region, instead of daily, to make it easier to understand and make insights from the data.
+
+In order to clean the data, we first loaded sheets for both North (Arctic) and Southern (Antartic) Hemispheres. For each sheet, we selected and renamed the columns for day, month, and year, filled missing month values. For years data, we transformed the data into a long format where each row represent a specific day’s ice extent in a give year. Along in one pipe, we continued to convert the month to an ordered factor, added a “region” column for hemisphere distinction, and arranged the rows by year, month, day. 
+
+After combining both datasets, we created a date column from the year, month, and day columns for easier time-based analysis. Finally, we grouped the data by year and region to calculate the yearly minimum and maximum sea ice extents. The final dataset presents the daily sea ice extent in a tidy format, with minimum and maximum values labeled for easy comparison across years and regions.
+
+## Opinions on Climate Change and Awareness of its Definition
+
+```{r load_data3}
+# Put in your code to load in the data set, along with any
+# necessary cleaning beyond what was done in Part 1
+climate_opinion_address <- "https://data.humdata.org/dataset/dc9f2ca4-8b62-4747-89b1-db426ce617a0/resource/6041db5f-8190-47ff-a10b-9841325de841/download/climate_change_opinion_survey_2022_aggregated.xlsx"
+
+climate_sheet_names <- climate_opinion_address |>
+    loadWorkbook() |>
+    names()
+
+aware_sheet_name <- "climate_awareness"
+
+climate_awareness <- climate_opinion_address |>
+    read.xlsx(
+        sheet = aware_sheet_name
+    ) |>
+    pivot_longer(
+        cols = !contains(aware_sheet_name),
+        names_to = "country",
+        values_to = "score"
+    ) |>
+    mutate(
+        climate_awareness = case_when(
+            climate_awareness == "I have never heard of it" ~ "aware_no",
+            climate_awareness == "I know a little about it" ~ "aware_alittle",
+            climate_awareness == "I know a moderate amount about it" ~
+                "aware_moderate",
+            climate_awareness == "I know a lot about it" ~ "aware_alot",
+            climate_awareness == "Refused" ~ "aware_refuse",
+            climate_awareness == "(Unweighted Base)" ~ "aware_base"
+        )
+    ) |>
+    rename(answer = climate_awareness) |>
+    pivot_wider(
+        names_from = answer,
+        values_from = score
+    )
+```
+
+The data come from the 2022 Climate Change Opinion Survey of Meta and the Yale Program on Climate Change Communication and describes the number of people responding about climate change awareness across various countries (107 individual countries, territories and 3 geographic groups). undefined
+
+In order to clean thdata, we \<\<steps to clean the data, concise but precise enough that a reader could follow your steps without seeing your code\>\>
+
+## Combining the Data
+
+Explain how any combinations of data were performed. Explain what kind of join was needed, whether columns had to be modified (for example, matching "country" names.)
+
+# Exploratory Data Analysis
+
+To achieve our goals, we explored the data by...
+
+We explored many aspects of the data, but will demonstrate three. These are \<\<insight 1\>\>, \<\<insight 2\>\>, and \<<insight3>\>
+
+The first aspect that we found interesting is shown in \@ref(fig:insight1). The insight should be specific to the data shown, not a general statement beyond the data (leave that for the conclusion).
+
+```{r insight1, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+# This is an example of how you can control figures and captions in
+# an R chunk. Note that you can reference figures using:
+# \@ref(fig:insight1), where "insight1" is the label of this code
+# chunk (the first bit of text after the "r" in "```{r label, options...}")
+```
+
+This insight is supported by the summary statistics in table \@ref(tab:summary_stats)
+
+```{r summary_stats}
+# Calculate the relevant summary statistics here.
+# Note that the "kable" function in the "knitr" package
+# is convenient for making nice tables. Other packages can
+# do much fancier things with tables, but keep in mind that
+# the insights should be the star, not the formatting.
+```
+
+The next insight that we found is shown in \@ref(fig:insight2).
+
+```{r insight2, fig.height=4, fig.width=6, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+# This figure will have a height of 4 and a width of 6.
+# Feel free to change this, and to apply different sizes
+# to the other figures you create.
+```
+
+Finally, \@ref(fig:insight3) shows ...
+
+```{r insight3, fig.height=4, fig.width=6, fig.cap="This is a figure caption that you will need to change in order to get good marks in the visualization rubric items."}
+```
+
+# Conclusion and Future Work
+
+Overall, we found \<<general ideas>\>.
+
+A second paragraph about our findings.
+
+The next steps in this analysis are...
+
+The limitations of this analysis are as follows. (Do not simply list potential issues with sampling, but relate them to your analysis and how they affect your conclusions. An honest and complete acknowledgement of the limitations makes the analysis more trustworthy.)
+
+# References
+
+I am not strict about MLA or APA style or anything like that. For this report, I would much rather have your citations be easy to match to your insights.
+
+The easiest way is to use Rmd's [footnote](https://bookdown.org/yihui/rmarkdown/markdown-syntax.html#inline-formatting) syntax. This will put a number beside the word where the footnote appears, and the full text of the footnote at the bottom of the page (pdf) or end of the document (html). The syntax is:[^1], where I suggest that you put in something like this[^2] to make references for this assignment.
+
+[^1]: See the source view to see this footnote
+
+[^2]: The relevance to the insight is ... . From \<<name of source and name of article>\>, published on \<<date>\>, url: \<<link to page>\>
+
+Alternatively, you could make a list of citations with their main arguments and why they're relevent to your insights, methods, etc.
+
+The link above also references "bibtex" files. These are also extremely convenient, but have a steep learning curve and they make it difficult to tie them to an insight. If you use bibtext, then make sure that you provide a sentence to describe the source and it's relevance when you cite it - don't just add citations to the end of a sentence (this is common practice in academia, but I want to know that your citations are directly relevant for this assignmnet).

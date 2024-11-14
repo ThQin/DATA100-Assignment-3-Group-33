@@ -797,7 +797,7 @@ if (!"region" %in% colnames(cyclones_data)) {
         mutate(region = if_else(lat >= 0, "Arctic", "Antarctic"))
 }
 
-cyclones_ice_data <- cyclones_data %>%
+cyclones_ice_data <- cyclones_data |>
     inner_join(ice_extent_daily, by = c("date", "region"))
 
 print(cyclones_ice_data)

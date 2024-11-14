@@ -797,7 +797,7 @@ if (!"region" %in% colnames(cyclones_data)) {
         mutate(region = if_else(lat >= 0, "Arctic", "Antarctic"))
 }
 
-cyclones_ice_data <- cyclones_data |>
+cyclones_ice_data <- cyclones_data %>%
     inner_join(ice_extent_daily, by = c("date", "region"))
 
 print(cyclones_ice_data)
@@ -858,18 +858,28 @@ summary_stats |>
 ```
 PLOT1: 
 ```{r}
-ggplot(ice_extent_yearly) +
-    aes(x = year, y = value, colour = name) +
-    geom_line(size = 1) +
+cyclone_ice_summary_general <- cyclones_ice_data |>
+    group_by(year, region) |>
+    summarise(
+        mean_max_wind = mean(max_wind, na.rm = TRUE),
+        mean_ice_extent = mean(ice_extent, na.rm = TRUE),
+        .groups = 'drop'
+    )
+
+ggplot(cyclone_ice_summary_general) +
+    aes(x = year) +
+    geom_line(aes(y = mean_max_wind, color = "Mean Max Wind (knots)"), size = 1) +
+    geom_line(aes(y = mean_ice_extent, color = "Mean Ice Extent (million km²)"), size = 1, linetype = "dashed") +
     facet_wrap(~ region) +
     labs(
         x = "Year",
-        y = "Sea Ice Extent (million km²)",
-        colour = "Extent Type",
-        title = "Yearly Min and Max Sea Ice Extent",
-        subtitle = "Arctic and Antarctic Sea Ice Trends"
+        y = "Mean Value",
+        title = "Yearly Mean Cyclone Intensity and Sea Ice Extent",
+        subtitle = "Broad Trends in Arctic and Antarctic Regions",
+        color = "Metric"
     ) +
     theme_minimal()
+
 
 ```
 PLOT2 : 
@@ -883,28 +893,30 @@ ggplot(cyclones_ice_data) +
         x = "Sea Ice Extent (million km²)",
         y = "Cyclone Max Wind (knots)",
         color = "Cyclone Category",
-        title = "Cyclone Intensity vs. Sea Ice Extent",
-        subtitle = "Faceted by Arctic and Antarctic Regions"
+        title = "Cyclone Intensity vs. Sea Ice Extent by Region",
+        subtitle = "Impact of Cyclone Category and Sea Ice Levels"
     ) +
     theme_minimal()
+
 
 ```
 PLOT3 : 
 ```{r}
-cyclones_data %>%
-    group_by(year = ObservYear, region, category) |>
-    summarise(count = n(), .groups = 'drop') |>
-    ggplot(aes(x = year, y = count, fill = category)) +
-    geom_bar(stat = "identity", position = "dodge") +
-    facet_wrap(~ region) +
-    labs(
-        x = "Year",
-        y = "Cyclone Count",
-        fill = "Cyclone Category",
-        title = "Cyclone Counts by Category Over Time",
-        subtitle = "Arctic vs. Antarctic Cyclone Trends by Intensity"
+cyclones_ice_data |> 
+  ggplot() + 
+  aes(x = category,
+      y = max_wind,
+      fill = region) +
+  geom_boxplot() + 
+  labs(
+        x = "Cyclone Category",
+        y = "Cyclone Max Wind (knots)",
+        fill = "Region",
+        title = "Cyclone Intensity by Category and Region",
+        subtitle = "Comparative Distribution of Cyclone Strengths"
     ) +
     theme_minimal()
+  
 
 ```
 

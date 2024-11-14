@@ -320,7 +320,7 @@ In order to clean the data, we first loaded sheets for both North (Arctic) and S
 
 After combining both datasets, we created a date column from the year, month, and day columns for easier time-based analysis. Finally, we grouped the data by year and region to calculate the yearly minimum and maximum sea ice extents. The final dataset presents the daily sea ice extent in a tidy format, with minimum and maximum values labeled for easy comparison across years and regions.
 
-## Opinions on Climate Change and Awareness of its Definition
+## Opinions on Climate Change Awareness
 
 ```{r load_data3}
 # Put in your code to load in the data set, along with any
@@ -360,9 +360,9 @@ climate_awareness <- climate_opinion_address |>
     )
 ```
 
-The data come from the 2022 Climate Change Opinion Survey of Meta and the Yale Program on Climate Change Communication and describes the number of people responding about climate change awareness across various countries (107 individual countries, territories and 3 geographic groups). undefined
+The data come from the 2022 Climate Change Opinion Survey of Meta and the Yale Program on Climate Change Communication and describes the number of people responding about how much they known about climate change across various countries (107 individual countries, territories and 3 geographic groups). It includes information on awareness levels about climate change, from low to high (no, a little, moderate, a lot) for each country, as well as the number of people who chose not to respond and the base population surveyed in each country.
 
-In order to clean thdata, we \<\<steps to clean the data, concise but precise enough that a reader could follow your steps without seeing your code\>\>
+In order to clean the data, we load the data sets and name the sheet containing the data to be processed. The sheet was transformed by pivoting the data in longer format, converting country names into a single column and associating each score with it. The awareness levels were then standardized to have a valid column names based on the original responses. The climate awareness column was renamed to answer for clarity, and the data was pivoted again to wider format to create separate columns for each awareness category, with their corresponding scores. This transformation made the data easier to analyze by grouping awareness levels and their associated scores for each country.
 
 ## Combining the Data
 

@@ -787,7 +787,6 @@ And, finally, save the file:
 write_parquet(happiness, "happiness.parquet")
 ```
 
-
 DATA EXPLORATORY
 
 ```{r}
@@ -862,62 +861,48 @@ summary_stats_yearly |>
     )
 
 ```
-PLOT1: 
-```{r}
-cyclone_ice_summary_general <- cyclones_ice_yearly |> 
-    group_by(year, region) |>
-    summarise(
-        mean_max_wind = mean(max_wind, na.rm = TRUE),
-        mean_ice_extent = mean(avg_ice_extent, na.rm = TRUE),
-        .groups = 'drop'
-    )
 
-ggplot(cyclone_ice_summary_general) +
-    aes(x = year) +
-    geom_line(aes(y = mean_max_wind, color = "Mean Max Wind (knots)"), size = 1) +
-    geom_line(aes(y = mean_ice_extent, color = "Mean Ice Extent (million km²)"), size = 1, linetype = "dashed") +
-    facet_wrap(~ region) +
-    labs(
-        x = "Year",
-        y = "Mean Value",
-        title = "Yearly Mean Cyclone Intensity and Sea Ice Extent",
-        subtitle = "Broad Trends in Arctic and Antarctic Regions",
-        color = "Metric"
-    ) +
-    theme_minimal()
-
-
-```
-PLOT2 : 
+PLOT1:
 
 ```{r}
-cyclone_ice_summary <- cyclones_ice_yearly |>
-    group_by(year, region, category) |>
-    summarise(
-        avg_max_wind = mean(max_wind, na.rm = TRUE),
-        avg_ice_extent = mean(avg_ice_extent, na.rm = TRUE),
-        .groups = 'drop'
-    )
-
-ggplot(cyclone_ice_summary) +
-    aes(x = avg_ice_extent, y = avg_max_wind, color = category) +
-    geom_point(alpha = 0.7, size = 2) +
-    facet_wrap(~ region) +
+ggplot(cyclones_ice_yearly) +
+    aes(x = avg_ice_extent, y = max_wind, color = category) +
+    geom_point(alpha = 0.7) +
     labs(
         x = "Average Sea Ice Extent (million km²)",
-        y = "Average Cyclone Max Wind (knots)",
+        y = "Cyclone Max Wind (knots)",
         color = "Cyclone Category",
-        title = "Cyclone Intensity vs. Sea Ice Extent by Region",
-        subtitle = "Analysis of Cyclone Categories and Sea Ice Levels"
+        title = "Cyclone Intensity vs. Sea Ice Extent by Cyclone Category",
+        subtitle = "Comparing Intensity and Sea Ice Levels Across Cyclone Categories"
+    ) +
+    theme_minimal()
+
+```
+
+PLOT2 :![](images/clipboard-1163357977.png)
+
+```{r}
+ggplot(cyclones_ice_yearly) +
+    aes(x = avg_ice_extent, y = max_wind, color = category) +
+    geom_point(alpha = 0.7) +
+    facet_wrap(~ category) +
+    labs(
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)",
+        color = "Cyclone Category",
+        title = "Cyclone Intensity vs. Sea Ice Extent by Cyclone Category",
+        subtitle = "Comparing Intensity and Sea Ice Levels Across Cyclone Categories"
     ) +
     theme_minimal()
 
 
 ```
-PLOT3 : 
+
+PLOT3 :
+
 ```{r}
 cyclones_ice_yearly |> 
-  ggplot() +
+  ggplot()
     aes(x = category, y = max_wind, fill = region) +
     geom_boxplot() +
     labs(
@@ -935,4 +920,3 @@ cyclones_ice_yearly |>
 ```{r active="", eval=FALSE}
 # END ASSIGNMENT 
 ```
- 

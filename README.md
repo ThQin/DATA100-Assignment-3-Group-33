@@ -1,0 +1,1 @@
+Hey, team! I’ve been going over the project description. We are focusing on the impacts and perceptions of climate change, and we’re using three different datasets: one on hurricane data, another on ice extend and a dataset about global climate change awareness. What do you think about the structure so far?

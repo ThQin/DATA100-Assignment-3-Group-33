@@ -1,5 +1,5 @@
 ---
-title: "TITLE OF YOUR PROJECT"
+title: "Climate Change: Relationship between Cyclone Intensity, Sea Ice Extent, and Awareness of Climate Change Definitions"
 author: "Group 33"
 date: "November 12th, 2024"
 output:
@@ -33,13 +33,15 @@ library(gt)
 
 # Abstract
 
-This report explores the relationship between cyclone intensity and sea ice extent, focusing on their potential correlation within the context of climate change. By analyzing a dataset of cyclone strength metrics and yearly sea ice extent, we apply exploratory data analysis techniques such as scatter plots, hexbin plots, and density plots to investigate trends and patterns. Our findings reveal no significant correlation between cyclone intensity and sea ice extent, with cyclones of varying strengths occurring across the full range of sea ice extents. Although both variables show trends over time, they do not exhibit a clear relationship, suggesting that other environmental factors may play a more substantial role in shaping cyclone behavior.
+This report explores the relationship between cyclone intensity, sea ice extent, and climate awareness. Our analysis shows no strong correlation between cyclone intensity and sea ice extent, with cyclones of varying strengths occurring across a broad range of ice levels. Higher wind speeds show a slight association with increased climate awareness, particularly among those with moderate to high awareness, while low awareness is more common in areas with weaker cyclones. These findings suggest that cyclone experience may influence climate awareness slightly, but other factors likely play a larger role. Future work will incorporate additional environmental and socio-economic variables to expand insights, though our current sample size and geographic scope are limited.
 
 # Introduction
 
-Climate change is something that has been studied. In recent years, significant attention has been paid to the relationship between climate change and extreme weather events, such as cyclones melting sea ice levels. Understanding how these factors interact can provide valuable insights into the broader impacts of climate change on our planet.
+Climate change is something that has been studied. In recent years, significant attention has been paid to the relationship between climate change and extreme weather events, such as cyclones melting sea ice levels. Understanding how these factors interact, along with how people respond to them in terms of climate awareness, can provide valuable insights into the broader impacts of climate change on our planet and actions to address these issues.
 
-In this report, we will examine the relationship between cyclone intensity (measured by maximum wind speed) and sea ice extent over time. The data used for this analysis includes yearly cyclone strength metrics and sea ice extent observations. We will employ various exploratory data analysis techniques, including scatter plots, hexbin plots, and density plots, to visualize the distribution, trends, and possible correlations between the two variables. By the end of this report, we aim to demonstrate that while both cyclone intensity and sea ice extent exhibit time-related trends, no clear correlation exists between the two, suggesting that other climatic factors may be influencing cyclone strength more significantly than sea ice extent alone.
+In this report, we will examine the relationship between cyclone intensity (measured by maximum wind speed), sea ice extent, and climate awareness levels. The data used for this analysis includes yearly cyclone strength metrics, sea ice extent observations and survey data measuring climate change awareness across countries. We will employ various cleaning, summary statistics, combining, and exploratory data analysis techniques, including hexbin plots, scatter plots and violin plots, to visualize the distribution, trends, and possible correlations between the two variables.
+
+By the end of this report, we aim to investigate whether hurricanes and sea ice levels have any impact on each other (under the context of increasing climate change level). Furthermore, we want to examine the relationship between hurricane strength and levels of climate awareness, whether that direct exposure to extreme weather may be correlated with higher awareness. However, we consider that there are limitations in our standardization process, where many adjustments need to be made to combine the data.
 
 # Data Description
 
@@ -210,7 +212,7 @@ kable(
    kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-The data come from Hurricane Databases (HURDAT/HURDAT2) of the US’s National Oceanic and Atmospheric Administration, specifically two files for Atlantic hurricanes (1851-2022) and Northeast Pacific hurricanes (1949-2022). The clean data details each cyclone with their identity along with with its date/time and geographical latitude and longitude. It records key metrics like wind speed and central pressure and includes descriptive fields for category (e.g., tropical storm, hurricane) and type of meteorological system.
+The data come from Hurricane Databases (HURDAT/HURDAT2) of the US’s National Oceanic and Atmospheric Administration, specifically two files for Atlantic hurricanes (1851-2022) and Northeast Pacific hurricanes (1949-2022). The clean data details each cyclone with their identity along with with its date/time and geographical latitude and longitude. It records key metrics like wind speed and central pressure and includes descriptive fields for category (e.g., tropical storm, hurricane) and type of meteorological system.^2^
 
 The hurricane data for both the Atlantic and North Pacific basins was cleaned by loading files with placeholder column names. The raw data was parsed, splitting values based on delimiters, and converting sentinel values to missing values. Columns for cyclones’ identity (basin, year, name, number) were created, filled, and filtered to retain rows with a valid status. Data for detailed day and time of observations were parsed, renamed, and converted to appropriate data types. Both data sets were combined, and latitude and longitude values were standardized to numeric format using a custom function to manage directional indicators. The final data set includes a date column and assigns a storm category based on wind speed (levels of hurricane, tropical storm or tropical depression), making it suitable for further analysis across both basins.
 
@@ -387,6 +389,8 @@ kable(head(cyclones_ice_yearly,n=7)) |> kable_styling(full_width = FALSE, bootst
 
 ```
 
+To combine the climate awareness and cyclone data, we first mapped each cyclone's geographical coordinates (latitude and longitude) to a specific country. Using spatial mapping, we converted cyclone coordinates into country names by overlaying them on a world map. This allowed us to assign each cyclone event to its respective country. Next, we calculated the average maximum wind speed for each country based on these events, creating a summary of cyclone intensity by location. We then standardized country names in both datasets to ensure the maximum number of matching countries. Finally, we merged this summarized cyclone data with the climate awareness data by matching countries and transformed the climate awareness levels into a long format to facilitate comparison across different awareness categories.
+
 ```{r combinecyclonesvsclimate}
 latlon <- cyclones_data |> 
   select(lat, lon) |> 
@@ -447,14 +451,14 @@ cyclones_climate_awareness <- cyclones_with_countries |>
     names_to="level",
     values_to="value"
   )
-kable(head(cyclones_climate_awareness,n=10))
+kable(head(cyclones_climate_awareness,n=10)) |> kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
 # Exploratory Data Analysis
 
-To achieve our goals, we explored the data by using summary statistics to measure the dispersion/ variability and visualization to assess the relationship between hurricanes strength and yearly ice extent.
+To achieve our goals, we explored the data by using summary statistics to measure variability and visualization tools to assess the relationship between cyclone characteristics, sea ice extent, and climate change awareness levels across regions.
 
-We explored many aspects of the data, but will demonstrate three. These are
+We explored many aspects of the data, but will demonstrate three. These are the lack of strong relationship between cyclone intensity and sea ice extent, a slight positive correlation between higher cyclone wind speeds and increased climate change awareness, and the distribution of climate awareness levels, where high awareness is concentrated around moderate cyclone intensities, and low or ambivalent awareness is more common in areas with lower wind speeds.
 
 The first aspect that we found interesting is shown in \@ref(fig:insight1). The spread and lack of a directional pattern in hexbin density indicate that cyclone intensity is not directly related to sea ice extent. Cyclones of varying intensities occur across the spectrum of ice extents. Another insight is that the concentration around 12–15 million km² of ice extent with moderate wind speeds (less than 50 knots) suggests that cyclones are most frequently observed under these conditions.
 
@@ -509,9 +513,9 @@ kable(summary_stats_yearly,
   
 ```
 
-The next insight that we found is shown in \@ref(fig:insight2).
+The next insight that we found is shown in \@ref(fig:insight2). Overall, there is a weak or mixed correlation between cyclone wind speed and climate change awareness levels, indicating that direct cyclone experience does not strongly influence awareness. However, there is a slight upward trend for high and moderate awareness level, suggesting that people exposed to higher wind speeds may be marginally more aware of climate change. Conversely, groups having no awareness or refuse to answer tend to decline as wind speed increases, implying that low awareness is more common in areas with lower cyclone intensity. The little awareness category remains stable, showing little sensitivity to cyclone wind speed.
 
-```{r insight2, fig.height=4, fig.width=6, fig.cap=""}
+```{r insight2, fig.height=4, fig.width=6, fig.cap="Higher cyclone wind speeds correlate with increased climate awareness, while low awareness remains stable or declines."}
 # This figure will have a height of 4 and a width of 6.
 # Feel free to change this, and to apply different sizes
 # to the other figures you create.
@@ -530,34 +534,35 @@ cyclones_climate_awareness |> ggplot() +
 
 ```
 
-Finally, \@ref(fig:insight3)
+Finally, \@ref(fig:insight3) shows that individuals with mid to moderate climate awareness show a broad distribution across various wind speeds, indicating little influence from cyclone intensity. In contrast, those with strong awareness are concentrated around moderate wind speeds, suggesting a link between notable cyclone experience and higher awareness. Lack of awareness is more common in regions with lower wind speeds, potentially due to limited cyclone exposure, while those who refuse to answer are also centered around lower wind speeds, hinting at possible ambivalence toward climate change in less cyclone-prone areas.
 
-```{r insight3, fig.height=4, fig.width=6, fig.cap=""}
-ggplot(cyclones_climate_awareness, aes(x = mean_wind, y = value, fill = level)) +
-  geom_violin(trim = FALSE) +
+```{r insight3, fig.height=4, fig.width=6, fig.cap="Higher cyclone wind speeds are somewhat associated with stronger climate awareness, while lower wind speeds correspond to a lack of awareness or refusal to acknowledge climate change."}
+ggplot(cyclones_climate_awareness, aes(x = value, y = mean_wind,fill=level)) +
+  geom_violin() +
   facet_wrap(~level) +
-  labs(title = "Distribution of Climate Awareness Levels by Country",
-       x = "Level",
-       y = "Awareness Value") +
+  labs(
+    title = "Climate Awareness Levels Across Mean Wind Speeds",
+    x = "Mean Wind",
+    y = "Awareness Value"
+  ) +
   theme_minimal() + 
-  scale_fill_manual(
-    values=c("#006ee6","#0055b3","#003d80","#00245d","#000c19")
-  )
+  scale_fill_manual(values = c("#006ee6","#0055b3","#003d80","#00254d","#000000"))
+
 ```
 
 # Conclusion and Future Work
 
-Overall, we found \<<general ideas>\>.
+Our analysis reveals that there is no strong correlation between cyclone intensity and sea ice extent, as cyclones of all strengths occur across a range of ice extents. There is a common concentration at moderate ice levels and wind speeds. Furthermore, while higher cyclone wind speeds show a slight positive correlation with increased climate change awareness, particularly among individuals with moderate to strong awareness levels, those with low or no awareness tend to be concentrated in regions with lower cyclone intensity. These findings suggest that hurricane and changing sea ice extent might be weather events that are happening separately, not the reaction chain of climate change. Moreover, it also indicates that direct cyclone experience may have a slight impact on climate awareness, but factors beyond cyclone intensity are likely more influential in shaping public perceptions of climate change.
 
-A second paragraph about our findings.
+For future analysis, we plan to enhance the model by incorporating additional environmental variables, such as temperature and precipitation patterns to gain more insights into the way they are interacting or impacting each other. Expanding the model to consider socio-economic and educational factors could also provide a richer context for interpreting climate awareness trends, making our insights more actionable for education programs.
 
-The next steps in this analysis are...
-
-The limitations of this analysis are as follows. (Do not simply list potential issues with sampling, but relate them to your analysis and how they affect your conclusions. An honest and complete acknowledgement of the limitations makes the analysis more trustworthy.)
+We still have some limitations, especially the process of standardization to combine the data, which reduce our sample significantly. In detail, when combining data from cyclones intensity data and climate awareness data, our sample seem to be too small with only 46 matching countries. This limited sample size restricts the generalizability of our findings and may not capture the full diversity of climate experiences across different regions. Beside, we also cannot fully cover the relationship between Antarctic sea ice extent and hurricane strength (due to the basins are both in North Hemisphere), but only for Arctic.
 
 # References
 
-(1) NASA. (2024). *Extreme Weather and Climate Change*. NASA. <https://science.nasa.gov/climate-change/extreme-weather/>
+1.  jdjgh
+2.  *NHC Data Archive*. (2018). Noaa.gov. <https://www.nhc.noaa.gov/data/>
+3.  
 
 The easiest way is to use Rmd's [footnote](https://bookdown.org/yihui/rmarkdown/markdown-syntax.html#inline-formatting) syntax. This will put a number beside the word where the footnote appears, and the full text of the footnote at the bottom of the page (pdf) or end of the document (html). The syntax is:[^1], where I suggest that you put in something like this[^2] to make references for this assignment.
 

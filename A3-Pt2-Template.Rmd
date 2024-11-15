@@ -445,6 +445,7 @@ aware_fixed_country <- climate_awareness |>
     )
 cyclones_climate_awareness <- cyclones_with_countries |>
   inner_join(aware_fixed_country,by="country") |> 
+  select(-aware_base) |> 
   pivot_longer(
     cols=c(contains("aware")), 
     names_to="level",
@@ -514,10 +515,22 @@ kable(summary_stats_yearly,
 
 The next insight that we found is shown in \@ref(fig:insight2).
 
-```{r insight2, fig.height=4, fig.width=6, fig.cap="WHile both variables exhibit trends over time, the patterns still do not show a clear relationship"}
+```{r insight2, fig.height=4, fig.width=6, fig.cap=""}
 # This figure will have a height of 4 and a width of 6.
 # Feel free to change this, and to apply different sizes
 # to the other figures you create.
+cyclones_climate_awareness |> ggplot() + 
+  aes(x=mean_wind,y=value) + 
+  geom_point() +
+  geom_smooth(colour="#191970",method="lm",se=FALSE,formula=y~x) +
+  facet_wrap(~level,scales="free") +
+  labs(
+    x="Average of wind speed of cyclones occured in each country",
+    y="Proportion of respondents who selected the awareness statement, by country",
+    title="Average Wind Speed of Cyclones vs. Awareness of Climate Change Definitions",
+    subtitle="Facets represent responses to a question about climate change."
+  ) +
+  theme_minimal()
 
 ```
 

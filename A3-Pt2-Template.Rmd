@@ -370,7 +370,7 @@ In order to clean the data, we load the data sets and name the sheet containing 
 
 To combine the yearly ice extent and hurricane strength data sets, we first standardized cyclones data tp match varaibles with ice extent data, by creating year column (based on observation year) and region column (based on whether the latitude is positive (Arctic) or negative (Antarctic)). For yearly ice extent data set, we pivoted it to a wider format to calculate an average ice extent for each year. Finally, we performed an inner join on year and region data. The resulting data set retains selected columns relevant to the analysis, such as year, region, maximum wind, hurricane category, and average yearly ice extent.
 
-```{r combinedata}
+```{r combinecyclonesvsiceextent}
 cyclones_data <- cyclones_data |>
     mutate(year = ObservYear,
            region = if_else(lat >= 0, "Arctic", "Antarctic"))
@@ -391,13 +391,75 @@ kable(head(cyclones_ice_yearly,n=7)) |> kable_styling(full_width = FALSE, bootst
 
 ```
 
+```{r combinecyclonesvsclimate}
+latlon <- cyclones_data |> 
+  select(lat, lon) |> 
+  relocate(lon)
+library(sp)
+library(rworldmap)
+
+# The single argument to this function, points, is a data.frame in which:
+#   - column 1 contains the longitude in degrees
+#   - column 2 contains the latitude in degrees
+coords2country = function(latlon)
+{  
+  countriesSP <- getMap(resolution='low')
+  #countriesSP <- getMap(resolution='high') #you could use high res map from rworldxtra if you were concerned about detail
+
+  # convert our list of points to a SpatialPoints object
+
+  # pointsSP = SpatialPoints(points, proj4string=CRS(" +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
+
+  #setting CRS directly to that from rworldmap
+  latlonSP = SpatialPoints(latlon, proj4string=CRS(proj4string(countriesSP)))  
+
+
+  # use 'over' to get indices of the Polygons object containing each point 
+  indices = over(latlonSP, countriesSP)
+
+  # return the ADMIN names of each country
+  indices$ADMIN  
+  #indices$ISO3 # returns the ISO3 code 
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
+}
+countries <- tibble(coords2country(latlon))
+
+cyclones_with_countries <- bind_cols(countries,cyclones_data)
+cyclones_with_countries <- cyclones_with_countries |> 
+  rename(country=`coords2country(latlon)`) |> 
+  filter(!is.na(country)) |> 
+  group_by(country) |> 
+  summarise(
+    mean_wind=mean(max_wind,na.rm=TRUE),
+    .groups = 'drop'
+  )
+cyclones_countries <- cyclones_with_countries|> pull(country)
+aware_countries <- aware_fixed_country |> pull(country)
+# setdiff(cyclones_countries, aware_countries)
+# setdiff(aware_countries,cyclones_countries)
+aware_fixed_country <- climate_awareness |>
+    mutate(
+        # Replace *all* *literal* periods with a space in the country column
+      country = str_replace_all(country, "\\.", " ")
+    )
+cyclones_climate_awareness <- cyclones_with_countries |>
+  inner_join(aware_fixed_country,by="country") |> 
+  pivot_longer(
+    cols=c(contains("aware")), 
+    names_to="level",
+    values_to="value"
+  )
+kable(head(cyclones_climate_awareness,n=10))
+```
+
 # Exploratory Data Analysis
 
 To achieve our goals, we explored the data by using summary statistics to measure the dispersion/ variability and visualization to assess the relationship between hurricanes strength and yearly ice extent.
 
-We explored many aspects of the data, but will demonstrate three. These are **the lack of strong correlation between cyclone intensity and sea ice extent**, **the temporal trends in cyclone intensity and sea ice extent across decades**, and **the distribution of cyclones across varying sea ice extents with no clear correlation**.
+We explored many aspects of the data, but will demonstrate three. These are
 
-t aspect that we found inter\@ref(fig:insight1). The scatter plot shows that cyclone intensity (max wind speed) remains fairly consistent across varying levels of sea ice extent. There is no observable trend, either positive or negative, between cyclone wind speed and ice extent (the regression line is almost horizontal). This indicates that sea ice extent does not strongly influence the strength of cyclones in this data set.
+The first aspect that we found interesting is shown in \@ref(fig:insight1). The spread and lack of a directional pattern in hexbin density indicate that cyclone intensity is not directly related to sea ice extent. Cyclones of varying intensities occur across the spectrum of ice extents. Another insight is that the concentration around 12–15 million km² of ice extent with moderate wind speeds (less than 50 knots) suggests that cyclones are most frequently observed under these conditions.
 
 ```{r insight1, fig.cap="No strong correlation between cyclones strength and ice extent"}
 # This is an example of how you can control figures and captions in
@@ -406,8 +468,7 @@ t aspect that we found inter\@ref(fig:insight1). The scatter plot shows that cyc
 # chunk (the first bit of text after the "r" in "```{r label, options...}")
 ggplot(cyclones_ice_yearly) +
     aes(x = avg_ice_extent, y = max_wind) +
-    geom_point(alpha=0.1) +
-    geom_smooth(method="lm") +
+    geom_hex(bin=20) +
     labs(
         x = "Average Sea Ice Extent (million km²)",
         y = "Cyclone Max Wind (knots)",
@@ -451,55 +512,18 @@ kable(summary_stats_yearly,
   
 ```
 
-The next insight that we found is shown in \@ref(fig:insight2). There are changes in cyclone intensity and sea ice extent. In particular, cyclone intensity (max wind speed) seems to increase over time, especially from the 2000s onwards with a broader range of wind speeds. Meanwhile, sea ice extent appears to have decreased over the decades, particularly in recent years (2020s). However, the smooth lines of plots for each decade are not consistent with other in direction (some are negative and some are positive) and also are not strong enough (with small slopes of the lines).
+The next insight that we found is shown in \@ref(fig:insight2).
 
 ```{r insight2, fig.height=4, fig.width=6, fig.cap="WHile both variables exhibit trends over time, the patterns still do not show a clear relationship"}
 # This figure will have a height of 4 and a width of 6.
 # Feel free to change this, and to apply different sizes
 # to the other figures you create.
-cyclones_ice_decade <- cyclones_ice_yearly |> 
-  filter(!is.na(category)) |> 
-        mutate(decade = floor(year / 10) * 10)
-    
-ggplot(cyclones_ice_decade) +
-    aes(x = avg_ice_extent, y = max_wind,colour=category,na.rm=TRUE) +
-    geom_point(alpha=0.2) +
-    geom_smooth(method="lm",colour="black") +
-    facet_wrap(~decade)+
-    labs(
-        x = "Average Sea Ice Extent (million km²)",
-        y = "Cyclone Max Wind (knots)",
-        color = "Cyclone Category",
-        title = "Cyclone Intensity vs. Sea Ice Extent by Cyclone Category",
-        subtitle = "Comparing Intensity and Sea Ice Levels Across Decade"
-    ) +
-    theme_minimal()
 
 ```
 
-Finally, \@ref(fig:insight3) shows that cyclones of varying intensities (from TD to Category 5) are observed across the full range of sea ice extents (from 12 to 16 million km²). For most cyclone categories, the peak intensity remains around 12–15 million km² of ice extent, but there is no clear trend indicating that higher or lower ice extents are linked to stronger or weaker cyclones.
+Finally, \@ref(fig:insight3)
 
-Finally, \@ref(fig:insight3) with the hex bins shows that there is no directional trend, suggesting that cyclone intensity is not directly related to sea ice extent. Cyclones of varying intensities occur across the spectrum of ice extents. The concentration around 12–15 million km² of ice extent with moderate wind speeds suggests that cyclones are most frequently observed under these conditions.
-
-```{r insight3, fig.height=4, fig.width=6, fig.cap="There is indication of common conditions for observations, but still no strong correlation"}
-ggplot(cyclones_ice_yearly) +
-    aes(x = avg_ice_extent, y = max_wind) +
-    geom_hex(bin=20) +
-    labs(
-        x = "Average Sea Ice Extent (million km²)",
-        y = "Cyclone Max Wind (knots)",
-        title = "Cyclone Intensity vs. Sea Ice Extent",
-        subtitle = "Comparing Intensity and Sea Ice Levels"
-    ) +
-    theme_minimal()
-
-ggplot(cyclones_ice_decade, aes(x = avg_ice_extent, fill = category)) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~category) +
-  labs(title = "Density Plot of Cyclone Intensity and Sea Ice Extent",
-       x = "Average Sea Ice Extent (million km²)",
-        y = "Cyclone Max Wind (knots)") +
-  theme_minimal()
+```{r insight3, fig.height=4, fig.width=6, fig.cap=""}
 
 ```
 
@@ -515,7 +539,7 @@ The limitations of this analysis are as follows. (Do not simply list potential i
 
 # References
 
-I am not strict about MLA or APA style or anything like that. For this report, I would much rather have your citations be easy to match to your insights.
+(1) NASA. (2024). *Extreme Weather and Climate Change*. NASA. <https://science.nasa.gov/climate-change/extreme-weather/>
 
 The easiest way is to use Rmd's [footnote](https://bookdown.org/yihui/rmarkdown/markdown-syntax.html#inline-formatting) syntax. This will put a number beside the word where the footnote appears, and the full text of the footnote at the bottom of the page (pdf) or end of the document (html). The syntax is:[^1], where I suggest that you put in something like this[^2] to make references for this assignment.
 

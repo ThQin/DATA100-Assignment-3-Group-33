@@ -12,12 +12,8 @@ output:
 List your group members, including their student numbers, here:
 
 -   Anh Phuong Dieu Nguyen (169105483)
--   Minh Tri Tran (\######)
--   Thi Thao Quyen Tran (\#####)
-
-You **must** be in a group in MyLS in order to see the DropBox used for submission. Even if you're alone, you must join a group by yourself.
-
-You **must** be in a group with people from the same section as you. MyLS does not allow for groups including students from both Data100A and Data100B.
+-   Minh Tri Tran (169107769)
+-   Thi Thao Quyen Tran (169077196)
 
 ```{r setup, include=FALSE}
 # echo = FALSE will set the Rmd to *not* show the R code. Don't change this.
@@ -522,7 +518,7 @@ The next insight that we found is shown in \@ref(fig:insight2).
 cyclones_climate_awareness |> ggplot() + 
   aes(x=mean_wind,y=value) + 
   geom_point() +
-  geom_smooth(colour="#191970",method="lm",se=FALSE,formula=y~x) +
+  geom_smooth(colour="#004999",method="lm",se=FALSE,formula=y~x) +
   facet_wrap(~level,scales="free") +
   labs(
     x="Average of wind speed of cyclones occured in each country",
@@ -537,7 +533,16 @@ cyclones_climate_awareness |> ggplot() +
 Finally, \@ref(fig:insight3)
 
 ```{r insight3, fig.height=4, fig.width=6, fig.cap=""}
-
+ggplot(cyclones_climate_awareness, aes(x = mean_wind, y = value, fill = level)) +
+  geom_violin(trim = FALSE) +
+  facet_wrap(~level) +
+  labs(title = "Distribution of Climate Awareness Levels by Country",
+       x = "Level",
+       y = "Awareness Value") +
+  theme_minimal() + 
+  scale_fill_manual(
+    values=c("#006ee6","#0055b3","#003d80","#00245d","#000c19")
+  )
 ```
 
 # Conclusion and Future Work

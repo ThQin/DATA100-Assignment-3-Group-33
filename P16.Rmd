@@ -1,6 +1,6 @@
 ---
 title: "P16"
-author: "Thi Thao Quyen Tran, 169077196"
+author: 
 ---
 
 ```{r active="", eval=FALSE}

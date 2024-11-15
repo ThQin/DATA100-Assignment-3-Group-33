@@ -1,0 +1,560 @@
+---
+title: "TITLE OF YOUR PROJECT"
+author: "Group 33"
+date: "November 12th, 2024"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+---
+
+List your group members, including their student numbers, here:
+
+-   Anh Phuong Dieu Nguyen (169105483)
+-   Minh Tri Tran (\######)
+-   Thi Thao Quyen Tran (\#####)
+
+You **must** be in a group in MyLS in order to see the DropBox used for submission. Even if you're alone, you must join a group by yourself.
+
+You **must** be in a group with people from the same section as you. MyLS does not allow for groups including students from both Data100A and Data100B.
+
+```{r setup, include=FALSE}
+# echo = FALSE will set the Rmd to *not* show the R code. Don't change this.
+# You may change the default figure width and figure height as you please.
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,warning=FALSE, fig.width = 6)
+
+# Put any libraries that you need to load here.
+# DO NOT PUT "install.packages()" IN AN RMD FILE!!!
+library(tidyverse)
+library(arrow)
+library(openxlsx)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(gt)
+```
+
+# Abstract
+
+This report explores the relationship between cyclone intensity and sea ice extent, focusing on their potential correlation within the context of climate change. By analyzing a dataset of cyclone strength metrics and yearly sea ice extent, we apply exploratory data analysis techniques such as scatter plots, hexbin plots, and density plots to investigate trends and patterns. Our findings reveal no significant correlation between cyclone intensity and sea ice extent, with cyclones of varying strengths occurring across the full range of sea ice extents. Although both variables show trends over time, they do not exhibit a clear relationship, suggesting that other environmental factors may play a more substantial role in shaping cyclone behavior.
+
+# Introduction
+
+Climate change is something that has been studied. In recent years, significant attention has been paid to the relationship between climate change and extreme weather events, such as cyclones melting sea ice levels. Understanding how these factors interact can provide valuable insights into the broader impacts of climate change on our planet.
+
+In this report, we will examine the relationship between cyclone intensity (measured by maximum wind speed) and sea ice extent over time. The data used for this analysis includes yearly cyclone strength metrics and sea ice extent observations. We will employ various exploratory data analysis techniques, including scatter plots, hexbin plots, and density plots, to visualize the distribution, trends, and possible correlations between the two variables. By the end of this report, we aim to demonstrate that while both cyclone intensity and sea ice extent exhibit time-related trends, no clear correlation exists between the two, suggesting that other climatic factors may be influencing cyclone strength more significantly than sea ice extent alone.
+
+# Data Description
+
+## Hurricane Strength in both the Atlantic and North Pacific basins
+
+```{r load_data1}
+cyclone_data_address <- "https://www.nhc.noaa.gov/data/hurdat/"
+at_cyclone_filename <- "hurdat2-1851-2022-050423.txt"
+np_cyclone_filename <- "hurdat2-nepac-1949-2022-050423.txt"
+
+new_columns <- c("status", "latitude", "longitude", "max_wind",
+    "min_pressure", "NE_extend_34", "SE_extend_34", "SW_extend_34",
+    "NW_extend_34", "NE_extend_50", "SE_extend_50", "SW_extend_50",
+    "NW_extend_50", "NE_extend_64", "SE_extend_64", "SW_extend_64",
+    "NW_extend_64", "r_max_wind"
+)
+at_cyclone <- str_c(cyclone_data_address, at_cyclone_filename, sep = "") |>
+    read_csv(
+        col_names = c(as.character(1:4)),
+        progress = FALSE,
+        show_col_types = FALSE
+    ) |>
+    separate_wider_delim(
+        cols = `4`,
+        # Set the delim and the names
+        delim=',',
+        names=new_columns
+    ) |>
+    mutate(
+        across(everything(), str_trim),
+        # make "-999" NAs, make "-99" NAs
+        # Create columns BasinNumberYear, Name, and Entries
+        across(everything(), ~na_if(., "-999")),
+        across(everything(), ~na_if(., "-99")),
+        BasinNumberYear = ifelse(is.na(status), `1`, NA),
+        Name = ifelse(is.na(status), `2`, NA),
+        Entries = ifelse(is.na(status), `3`, NA)
+    ) |>
+    relocate(BasinNumberYear, Name, Entries) |>
+    fill(BasinNumberYear, Name, Entries) |>
+    filter(!is.na(status))  |>
+    select(-Entries) |>
+    separate_wider_position(
+        BasinNumberYear,
+        # Specify the widths
+        widths = c(Basin = 2, Number = 2, NameYear = 4)
+    ) |>
+    separate_wider_position(
+        `1`,
+        # Specify the widths
+        widths = c(ObservYear = 4, Month = 2, Day = 2)
+    ) |>
+    separate_wider_position(
+        `2`,
+        # Specify the widths
+        widths = c(Hour = 2, Minute = 2)
+    ) |>
+    rename(
+        Identifier = `3`
+    ) |>
+    mutate(
+        across(
+            c(NameYear, ObservYear, Month, Day, Hour,
+                Minute, Number),
+            as.integer
+        )
+    ) |>
+    mutate(across(max_wind:r_max_wind, as.numeric))
+np_cyclone <- str_c(cyclone_data_address, np_cyclone_filename, sep = "") |>
+    # ALL of the steps all over again
+    read_csv(
+        col_names = c(as.character(1:4)),
+        progress = FALSE,
+        show_col_types = FALSE
+    ) |>
+    separate_wider_delim(
+        cols = `4`,
+        # Set the delim and the name
+        delim=",",
+        names=new_columns
+    ) |>
+    mutate(
+        across(everything(), str_trim),
+        # make "-999" NAs, make "-99" NAs
+        # Create columns BasinNumberYear, Name, and Entries
+        across(everything(), ~na_if(., "-999")),
+        across(everything(), ~na_if(., "-99")),
+        BasinNumberYear = ifelse(is.na(status), `1`, NA),
+        Name = ifelse(is.na(status), `2`, NA),
+        Entries = ifelse(is.na(status), `3`, NA)
+    ) |>
+    relocate(BasinNumberYear, Name, Entries) |>
+    fill(BasinNumberYear, Name, Entries) |>
+    filter(!is.na(status))  |>
+    select(-Entries) |>
+    separate_wider_position(
+        BasinNumberYear,
+        # Specify the widths
+        widths = c(Basin = 2, Number = 2, NameYear = 4)
+    ) |>
+    separate_wider_position(
+        `1`,
+        # Specify the widths
+         widths = c(ObservYear = 4, Month = 2, Day = 2)
+    ) |>
+    separate_wider_position(
+        `2`,
+        # Specify the widths
+        widths = c(Hour = 2, Minute = 2)
+    ) |>
+    rename(
+        Identifier = `3`
+    ) |>
+    mutate(
+        across(
+            c(NameYear, ObservYear, Month, Day, Hour,
+                Minute, Number),
+            as.integer
+        )
+    ) |>
+    mutate(across(max_wind:r_max_wind, as.numeric))
+cyclones_data_update_0 <- bind_rows(at_cyclone, np_cyclone)
+convert_latlon <- function(latlon) {
+   if_else(
+    str_detect(latlon, "[SW]$"),
+    -parse_number(latlon),
+    parse_number(latlon)
+  )
+}
+
+cyclones_data_update_1 <- cyclones_data_update_0 |>
+    mutate(
+        lat = convert_latlon(latitude),
+        lon = convert_latlon(longitude)
+    )
+cyclones_data_update_2 <- cyclones_data_update_1 |>
+    mutate(
+       date = make_datetime(
+          year = ObservYear,
+          month = Month,
+          day = Day, 
+          hour = Hour, 
+          min = Minute)
+    )
+cat_levels <- c("TD", "TS", "1", "2", "3", "4", "5")
+
+cyclones_data <- cyclones_data_update_2 |>
+    mutate(
+        category = ordered(
+            case_when(
+              max_wind <= 33 ~ 'TD',
+             max_wind <= 63 & max_wind >=34 ~ 'TS',
+             max_wind <= 82 & max_wind >=64  ~ '1',
+             max_wind <= 95 & max_wind >=83  ~ '2',
+             max_wind <= 112 & max_wind >=96  ~ '3',
+             max_wind <= 136 & max_wind >=113  ~ '4',
+             max_wind >= 137 ~ '5'
+            ),
+            levels = cat_levels
+        )
+    )
+kable(
+  head(cyclones_data,n=10) |> 
+  select(Basin, NameYear, Number, Name, date, lat, lon, max_wind, category),
+  col.names=c("Basin","NameYear", "Number","Name","date","lat","lon","max_wind","category")) |> 
+  add_header_above(c("Identity"=4,"Date/Time & Coordinates" = 3,"Classification"=2)
+      ) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+The data come from Hurricane Databases (HURDAT/HURDAT2) of the US’s National Oceanic and Atmospheric Administration, specifically two files for Atlantic hurricanes (1851-2022) and Northeast Pacific hurricanes (1949-2022). The clean data details each cyclone with their identity along with with its date/time and geographical latitude and longitude. It records key metrics like wind speed and central pressure and includes descriptive fields for category (e.g., tropical storm, hurricane) and type of meteorological system.
+
+The hurricane data for both the Atlantic and North Pacific basins was cleaned by loading files with placeholder column names. The raw data was parsed, splitting values based on delimiters, and converting sentinel values to missing values. Columns for cyclones’ identity (basin, year, name, number) were created, filled, and filtered to retain rows with a valid status. Data for detailed day and time of observations were parsed, renamed, and converted to appropriate data types. Both data sets were combined, and latitude and longitude values were standardized to numeric format using a custom function to manage directional indicators. The final data set includes a date column and assigns a storm category based on wind speed (levels of hurricane, tropical storm or tropical depression), making it suitable for further analysis across both basins.
+
+## **Yearly Ice Extent for the Arctic and Antarctic poles**
+
+```{r load_data2}
+# Put in your code to load in the data set, along with any
+# necessary cleaning beyond what was done in Part 1
+
+# Reminder: do NOT print your data to the screen unless it's
+# completely necessary
+sea_ice_extent_xlsx <- "https://masie_web.apps.nsidc.org/pub//DATASETS/NOAA/G02135/seaice_analysis/Sea_Ice_Index_Daily_Extent_G02135_v3.0.xlsx"
+
+NH_daily <- sea_ice_extent_xlsx |>
+    read.xlsx(
+        sheet = "NH-Daily-Extent",
+    ) |>
+    select(X1, X2, `1978`:`2023`) |>
+    rename(
+        month = X1,
+        day = X2
+    ) |>
+    fill(month) |>
+    pivot_longer(
+        cols = `1978`:`2023`,
+        names_to = "year",
+        values_to = "ice_extent",
+        values_drop_na = TRUE,
+    ) |>
+    mutate(
+        year = as.integer(year),
+        month = ordered(
+            month,
+            levels = c("January", "February", "March", "April",
+                "May", "June", "July", "August", "September",
+                "October", "November", "December")),
+        region = "Arctic",
+    ) |>
+    arrange(
+        year, month, day
+    )
+
+SH_daily <- sea_ice_extent_xlsx |>
+    read.xlsx(
+        sheet = "SH-Daily-Extent",
+        skipEmptyCols = TRUE,
+        fillMergedCells = TRUE,
+        cols = 1:48
+    ) |>
+    rename(
+        month = X1,
+        day = X2
+    ) |>
+    pivot_longer(
+        cols = `1978`:`2023`,
+        names_to = "year",
+        names_transform = list(year = as.integer),
+        values_to = "ice_extent",
+        values_drop_na = TRUE,
+    ) |>
+    mutate(
+        month = ordered(
+            month,
+            levels = c("January", "February", "March", "April",
+                "May", "June", "July", "August", "September",
+                "October", "November", "December")
+        ),
+        region = "Antarctic",
+    ) |>
+    arrange(
+        year, month, day
+    )
+
+ice_extent_daily <- bind_rows(NH_daily, SH_daily) |>
+    mutate(date = make_date(year, month, day)) |>
+    arrange(region, date)
+
+ice_extent_yearly <- ice_extent_daily |>
+    group_by(year, region) |> 
+    summarise(
+      max=max(ice_extent,na.rm=TRUE),
+      min=min(ice_extent,na.rm=TRUE),
+      .groups='drop'
+    ) |> 
+    pivot_longer(
+     cols = c(min,max),
+     names_to = "name",
+     values_to = "value"
+  )
+kable(
+  head(ice_extent_yearly,n=10),
+  col.names=c("year","region", "name","value")) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+The data come from the Sea Ice Index Daily Extent (Sea Ice Index) of the US’s National Snow and Ice Data Center and record daily sea ice extent from 1979 to present, in millions of square kilometers. The sea ice extent is defined as the total area of the ocean that is covered in ice of at least 15% concentration. The data is cleaned and transformed so that it describes the max and min yearly ice extent for each region, instead of daily, to make it easier to understand and make insights from the data.
+
+In order to clean the data, we first loaded sheets for both North (Arctic) and Southern (Antartic) Hemispheres. For each sheet, we selected and renamed the columns for day, month, and year, filled missing month values. For years data, we transformed the data into a long format where each row represent a specific day’s ice extent in a give year. Along in one pipe, we continued to convert the month to an ordered factor, added a “region” column for hemisphere distinction, and arranged the rows by year, month, day. 
+
+After combining both datasets, we created a date column from the year, month, and day columns for easier time-based analysis. Finally, we grouped the data by year and region to calculate the yearly minimum and maximum sea ice extents. The final dataset presents the daily sea ice extent in a tidy format, with minimum and maximum values labeled for easy comparison across years and regions.
+
+## Opinions on Climate Change Awareness
+
+```{r load_data3}
+# Put in your code to load in the data set, along with any
+# necessary cleaning beyond what was done in Part 1
+climate_opinion_address <- "https://data.humdata.org/dataset/dc9f2ca4-8b62-4747-89b1-db426ce617a0/resource/6041db5f-8190-47ff-a10b-9841325de841/download/climate_change_opinion_survey_2022_aggregated.xlsx"
+
+climate_sheet_names <- climate_opinion_address |>
+    loadWorkbook() |>
+    names()
+
+aware_sheet_name <- "climate_awareness"
+
+climate_awareness <- climate_opinion_address |>
+    read.xlsx(
+        sheet = aware_sheet_name
+    ) |>
+    pivot_longer(
+        cols = !contains(aware_sheet_name),
+        names_to = "country",
+        values_to = "score"
+    ) |>
+    mutate(
+        climate_awareness = case_when(
+            climate_awareness == "I have never heard of it" ~ "aware_no",
+            climate_awareness == "I know a little about it" ~ "aware_alittle",
+            climate_awareness == "I know a moderate amount about it" ~
+                "aware_moderate",
+            climate_awareness == "I know a lot about it" ~ "aware_alot",
+            climate_awareness == "Refused" ~ "aware_refuse",
+            climate_awareness == "(Unweighted Base)" ~ "aware_base"
+        )
+    ) |>
+    rename(answer = climate_awareness) |>
+    pivot_wider(
+        names_from = answer,
+        values_from = score
+    )
+kable(
+  head(climate_awareness,n=7),
+  col.names=c("country","aware_no","aware_alittle","aware_moderate","aware_alot","aware_refuse","aware_base")) |> 
+  add_header_above(c(" "=1,"Awareness level from low to high"= 4,"Refuse to answer"=1,"Sample"=1)
+      ) |> 
+   kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+The data come from the 2022 Climate Change Opinion Survey of Meta and the Yale Program on Climate Change Communication and describes the number of people responding about how much they known about climate change across various countries (107 individual countries, territories and 3 geographic groups). It includes information on awareness levels about climate change, from low to high (no, a little, moderate, a lot) for each country, as well as the number of people who chose not to respond and the base population surveyed in each country.
+
+In order to clean the data, we load the data sets and name the sheet containing the data to be processed. The sheet was transformed by pivoting the data in longer format, converting country names into a single column and associating each score with it. The awareness levels were then standardized to have a valid column names based on the original responses. The climate awareness column was renamed to answer for clarity, and the data was pivoted again to wider format to create separate columns for each awareness category, with their corresponding scores. This transformation made the data easier to analyze by grouping awareness levels and their associated scores for each country.
+
+## Combining the Data
+
+To combine the yearly ice extent and hurricane strength data sets, we first standardized cyclones data tp match varaibles with ice extent data, by creating year column (based on observation year) and region column (based on whether the latitude is positive (Arctic) or negative (Antarctic)). For yearly ice extent data set, we pivoted it to a wider format to calculate an average ice extent for each year. Finally, we performed an inner join on year and region data. The resulting data set retains selected columns relevant to the analysis, such as year, region, maximum wind, hurricane category, and average yearly ice extent.
+
+```{r combinecyclonesvsiceextent}
+cyclones_data <- cyclones_data |>
+    mutate(year = ObservYear,
+           region = if_else(lat >= 0, "Arctic", "Antarctic"))
+
+ice_extent_yearly_avg <- ice_extent_yearly |>
+  pivot_wider(
+    names_from=name, 
+    values_from=value 
+  ) |> 
+  group_by(year,region) |> 
+  summarise(avg_ice_extent=min+max/2,
+            .groups='drop') 
+
+cyclones_ice_yearly <- cyclones_data |>
+    inner_join(ice_extent_yearly_avg, by = c("year", "region")) |>  
+    select(year, region,max_wind,category,avg_ice_extent)
+kable(head(cyclones_ice_yearly,n=7)) |> kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed"))
+
+```
+
+```{r combinecyclonesvsclimate}
+latlon <- cyclones_data |> 
+  select(lat, lon) |> 
+  relocate(lon)
+library(sp)
+library(rworldmap)
+
+# The single argument to this function, points, is a data.frame in which:
+#   - column 1 contains the longitude in degrees
+#   - column 2 contains the latitude in degrees
+coords2country = function(latlon)
+{  
+  countriesSP <- getMap(resolution='low')
+  #countriesSP <- getMap(resolution='high') #you could use high res map from rworldxtra if you were concerned about detail
+
+  # convert our list of points to a SpatialPoints object
+
+  # pointsSP = SpatialPoints(points, proj4string=CRS(" +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
+
+  #setting CRS directly to that from rworldmap
+  latlonSP = SpatialPoints(latlon, proj4string=CRS(proj4string(countriesSP)))  
+
+
+  # use 'over' to get indices of the Polygons object containing each point 
+  indices = over(latlonSP, countriesSP)
+
+  # return the ADMIN names of each country
+  indices$ADMIN  
+  #indices$ISO3 # returns the ISO3 code 
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
+}
+countries <- tibble(coords2country(latlon))
+
+cyclones_with_countries <- bind_cols(countries,cyclones_data)
+cyclones_with_countries <- cyclones_with_countries |> 
+  rename(country=`coords2country(latlon)`) |> 
+  filter(!is.na(country)) |> 
+  group_by(country) |> 
+  summarise(
+    mean_wind=mean(max_wind,na.rm=TRUE),
+    .groups = 'drop'
+  )
+cyclones_countries <- cyclones_with_countries|> pull(country)
+aware_countries <- aware_fixed_country |> pull(country)
+# setdiff(cyclones_countries, aware_countries)
+# setdiff(aware_countries,cyclones_countries)
+aware_fixed_country <- climate_awareness |>
+    mutate(
+        # Replace *all* *literal* periods with a space in the country column
+      country = str_replace_all(country, "\\.", " ")
+    )
+cyclones_climate_awareness <- cyclones_with_countries |>
+  inner_join(aware_fixed_country,by="country") |> 
+  select( - aware_base )|>
+  pivot_longer(
+    cols=c(contains("aware")), 
+    names_to="level",
+    values_to="value"
+  )
+kable(head(cyclones_climate_awareness,n=10))
+```
+
+# Exploratory Data Analysis
+
+To achieve our goals, we explored the data by using summary statistics to measure the dispersion/ variability and visualization to assess the relationship between hurricanes strength and yearly ice extent.
+
+We explored many aspects of the data, but will demonstrate three. These are
+
+The first aspect that we found interesting is shown in \@ref(fig:insight1). The spread and lack of a directional pattern in hexbin density indicate that cyclone intensity is not directly related to sea ice extent. Cyclones of varying intensities occur across the spectrum of ice extents. Another insight is that the concentration around 12–15 million km² of ice extent with moderate wind speeds (less than 50 knots) suggests that cyclones are most frequently observed under these conditions.
+
+```{r insight1, fig.cap="No strong correlation between cyclones strength and ice extent"}
+# This is an example of how you can control figures and captions in
+# an R chunk. Note that you can reference figures using:
+# \@ref(fig:insight1), where "insight1" is the label of this code
+# chunk (the first bit of text after the "r" in "```{r label, options...}")
+ggplot(cyclones_ice_yearly) +
+    aes(x = avg_ice_extent, y = max_wind) +
+    geom_hex(bin=20) +
+    labs(
+        x = "Average Sea Ice Extent (million km²)",
+        y = "Cyclone Max Wind (knots)",
+        title = "Cyclone Intensity vs. Sea Ice Extent",
+        subtitle = "Comparing Intensity and Sea Ice Levels"
+    ) +
+    theme_minimal()
+
+```
+
+This insight is supported by the summary statistics in table \@ref(tab:summarystats)through the difference in variability between cyclone strength and yearly ice extent. As can be seen, cyclone strength, indicated by wind speed, show high variability with a range of 175 knots and standard deviation of 25.89. On the other hand, sea ice extent data has a level of stability with narrowed range (6.53) and low standard deviation (1.48). The contrasting patterns suggest that sea ice extent and cyclones strength may not have any direct impact on each other.
+
+```{r summarystats}
+# Calculate the relevant summary statistics here.
+# Note that the "kable" function in the "knitr" package
+# is convenient for making nice tables. Other packages can
+# do much fancier things with tables, but keep in mind that
+# the insights should be the star, not the formatting.
+summary_stats_yearly <- cyclones_ice_yearly |>
+    summarise(
+        total_observations = n(),
+        min_max_wind = min(max_wind, na.rm = TRUE),
+        max_max_wind = max(max_wind, na.rm = TRUE),
+        range_max_wind=max_max_wind - min_max_wind,
+        mean_max_wind=mean(max_wind,na.rm=TRUE),
+        median_max_wind=median(max_wind,na.rm=TRUE),
+        sd_max_wind = sd(max_wind, na.rm = TRUE),
+        min_avg_ice_extent = min(avg_ice_extent, na.rm = TRUE),
+        max_avg_ice_extent = max(avg_ice_extent, na.rm = TRUE),
+        range_ice_extent = max_avg_ice_extent - min_avg_ice_extent,
+        mean_ice_extent=mean(avg_ice_extent,na.rm=TRUE),
+        median_ice_extent=median(avg_ice_extent,na.rm=TRUE),
+        sd_avg_ice_extent = sd(avg_ice_extent, na.rm = TRUE)
+    )
+kable(summary_stats_yearly,
+      caption ="Summary Statistics for Cyclone and Yearly Sea Ice Extent Data",
+      col.names = c(
+    "Total observations", "Min", "Max","Range","Mean","Median", "SD", "Min", "Max","Range","Mean","Median", "SD")) |> 
+  add_header_above(c(" " = 1, "Cyclone Strength Metrics" = 6, "Ice Extent Metrics" = 6)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+  
+```
+
+The next insight that we found is shown in \@ref(fig:insight2).
+
+```{r insight2, fig.height=4, fig.width=6, fig.cap="WHile both variables exhibit trends over time, the patterns still do not show a clear relationship"}
+# This figure will have a height of 4 and a width of 6.
+# Feel free to change this, and to apply different sizes
+# to the other figures you create.
+
+```
+
+Finally, \@ref(fig:insight3)
+
+```{r insight3, fig.height=4, fig.width=6, fig.cap=""}
+ggplot(cyclones_climate_awareness, aes(x = mean_wind, y = value, fill = level)) +
+  geom_violin(trim = FALSE) +
+  facet_wrap(~level) +
+  labs(title = "Distribution of Climate Awareness Levels by Country",
+       x = "Level",
+       y = "Awareness Value") +
+  theme_minimal()
+
+```
+
+# Conclusion and Future Work
+
+Overall, we found \<<general ideas>\>.
+
+A second paragraph about our findings.
+
+The next steps in this analysis are...
+
+The limitations of this analysis are as follows. (Do not simply list potential issues with sampling, but relate them to your analysis and how they affect your conclusions. An honest and complete acknowledgement of the limitations makes the analysis more trustworthy.)
+
+# References
+
+(1) NASA. (2024). *Extreme Weather and Climate Change*. NASA. <https://science.nasa.gov/climate-change/extreme-weather/>
+
+The easiest way is to use Rmd's [footnote](https://bookdown.org/yihui/rmarkdown/markdown-syntax.html#inline-formatting) syntax. This will put a number beside the word where the footnote appears, and the full text of the footnote at the bottom of the page (pdf) or end of the document (html). The syntax is:[^1], where I suggest that you put in something like this[^2] to make references for this assignment.
+
+[^1]: See the source view to see this footnote
+
+[^2]: The relevance to the insight is ... . From \<<name of source and name of article>\>, published on \<<date>\>, url: \<<link to page>\>
+
+Alternatively, you could make a list of citations with their main arguments and why they're relevent to your insights, methods, etc.
+
+The link above also references "bibtex" files. These are also extremely convenient, but have a steep learning curve and they make it difficult to tie them to an insight. If you use bibtext, then make sure that you provide a sentence to describe the source and it's relevance when you cite it - don't just add citations to the end of a sentence (this is common practice in academia, but I want to know that your citations are directly relevant for this assignmnet).
